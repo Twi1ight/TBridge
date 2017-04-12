@@ -6,40 +6,60 @@
 
 import base64
 import socket
-
 import requests
+import sys
+import urlparse
 
-base_url = 'http://45.46.47.48:8089/%s'
+from settings import route_to_init, route_to_transport, route_to_shutdown
+from settings import headers, post_param_name, post_fragment_size
 
-proxy = {'http': 'http://22.161.218.94:3128'}
 
-
-def send_data(buf):
+def send_and_recv(buf):
     data = base64.b64encode(buf)
     print 'send data length', len(data)
-    d = {'data': data}
-    ret = url_request('POST', base_url % 'server', data=d)
+    ret = http_request('POST', urlparse.urljoin(server_url, route_to_transport), data={post_param_name: data})
+    print 'recv data length', len(ret)
     return base64.b64decode(ret)
 
 
-def url_request(method, url, **kwargs):
+def http_request(method, url, **kwargs):
     try:
-        ret = requests.request(method, url, timeout=5, **kwargs).content
-    except:
+        ret = requests.request(method, url, headers=headers, timeout=5,
+                               proxies=http_proxy, verify=False, **kwargs).content
+    except Exception as e:
+        print 'url request exception', e.message
         ret = ''
     return ret
 
 
+def argparse():
+    if len(sys.argv) != 4:
+        print 'usage: python client.py listen-port server-url http-proxy'
+        print 'e.g. python client.py 2222 http://12.34.56.78:8089/ http://proxy.yourcorp.com:8080'
+        print 'then "ssh root@localhost -p 2222" will ssh to 12.34.56.78'
+        sys.exit()
+    return int(sys.argv[1]), sys.argv[2], sys.argv[3]
+
+
 if __name__ == '__main__':
+    listen_port, server_url, proxy_url = argparse()
+    # listen_port, server_url, proxy_url = 2222, 'http://11.22.33.44:8089/', 'http://127.0.0.1:3128'
+    http_proxy = {'http': proxy_url}
     socket = socket.socket()
-    socket.bind(("127.0.0.1", 8080))
+    socket.bind(("127.0.0.1", listen_port))
     socket.listen(1)
-    conn, _ = socket.accept()
-    print 'init', url_request('GET', base_url % 'init')
+    shutdown = lambda: 'client exited, %s' % http_request('GET', urlparse.urljoin(server_url, route_to_shutdown))
     while True:
-        buf = conn.recv(1024)
-        if len(buf) == 0:
-            print 'client exited, shutdown server', url_request('GET', base_url % 'shutdown')
-            break
-        rdata = send_data(buf)
-        conn.sendall(rdata)
+        local, _ = socket.accept()
+        print 'client accepted,', http_request('GET', urlparse.urljoin(server_url, route_to_init))
+        while True:
+            try:
+                buf = local.recv(post_fragment_size)
+            except:
+                print shutdown()
+                break
+            if len(buf) == 0:
+                print shutdown()
+                break
+            resp = send_and_recv(buf)
+            local.sendall(resp)
