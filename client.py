@@ -4,22 +4,21 @@
 # @Time    : 2017/4/11
 # @Author  : Twi1ight
 
-import base64
 import socket
 import requests
 import sys
 import urlparse
 
 from settings import route_to_init, route_to_transport, route_to_shutdown
-from settings import headers, post_param_name, post_fragment_size
+from settings import headers, post_param_name, post_fragment_size, encrypt, decrypt
 
 
 def send_and_recv(buf):
-    data = base64.b64encode(buf)
+    data = encrypt(buf)
     print 'send data length', len(data)
     ret = http_request('POST', urlparse.urljoin(server_url, route_to_transport), data={post_param_name: data})
     print 'recv data length', len(ret)
-    return base64.b64decode(ret)
+    return decrypt(ret)
 
 
 def http_request(method, url, **kwargs):

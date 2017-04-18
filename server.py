@@ -7,11 +7,11 @@
 import sys
 import socket
 import select
-import base64
 
 from bottle import request, run, route, error
 
 from settings import route_to_transport, route_to_init, route_to_shutdown
+from settings import encrypt, decrypt, post_param_name
 
 
 @error(404)
@@ -38,10 +38,10 @@ def invoke_service(data):
 
 @route('/%s' % route_to_transport, method='POST')
 def transport():
-    raw = request.forms['z']
-    data = base64.b64decode(raw)
+    raw = request.forms[post_param_name]
+    data = decrypt(raw)
     ret = invoke_service(data)
-    return base64.b64encode(ret)
+    return encrypt(ret)
 
 
 @route('/%s' % route_to_init)
