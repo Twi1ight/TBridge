@@ -7,11 +7,12 @@
 import sys
 import socket
 import select
+import urllib
 
 from bottle import request, run, route, error
 
 from settings import route_to_transport, route_to_init, route_to_shutdown
-from settings import encrypt, decrypt, post_param_name
+from settings import encrypt, decrypt, cookie_param_name
 
 
 @error(404)
@@ -36,9 +37,9 @@ def invoke_service(data):
     return ret
 
 
-@route('/%s' % route_to_transport, method='POST')
+@route('/%s' % route_to_transport)
 def transport():
-    raw = request.forms[post_param_name]
+    raw = urllib.unquote(request.get_cookie(cookie_param_name))
     data = decrypt(raw)
     ret = invoke_service(data)
     return encrypt(ret)

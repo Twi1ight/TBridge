@@ -10,8 +10,8 @@ from Crypto.Cipher import AES
 route_to_init = 'underscore-min.js'
 route_to_transport = 'jquery-3.2.0.min.js'
 route_to_shutdown = 'bootstrap.min.css'
-post_param_name = 'z'
-post_fragment_size = 2048
+cookie_param_name = 'auth'
+data_fragment_size = 2048
 
 headers = {
     # 'Host': 'www.baidu.com',
