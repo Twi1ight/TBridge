@@ -3,14 +3,14 @@
 #
 # @Time    : 2017/4/11
 # @Author  : Twi1ight
-
+import re
 import socket
 import requests
 import sys
 import urlparse
 import urllib
 
-from settings import route_to_init, route_to_transport, route_to_shutdown
+from settings import route_to_init, route_to_transport, route_to_shutdown, md5digest
 from settings import headers, cookie_param_name, data_fragment_size, encrypt, decrypt
 
 
@@ -18,9 +18,15 @@ def send_and_recv(buf):
     data = encrypt(buf)
     print 'send data length', len(data)
     cookies = {cookie_param_name: urllib.quote(data)}
-    ret = http_request('GET', urlparse.urljoin(server_url, route_to_transport), cookies=cookies)
-    print 'recv data length', len(ret)
-    return decrypt(ret)
+    response = http_request('GET', urlparse.urljoin(server_url, route_to_transport), cookies=cookies)
+    ciphers = re.findall('"(.*?)"', response)
+    ciphertext = ''.join(ciphers)
+    digest = md5digest(ciphertext)
+    if response[-len(digest):] != digest:
+        print 'recv data digest error!'
+        return ''
+    print 'recv data length', len(ciphertext)
+    return decrypt(ciphertext)
 
 
 def http_request(method, url, **kwargs):
