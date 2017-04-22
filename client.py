@@ -34,7 +34,7 @@ def http_request(method, url, **kwargs):
         ret = requests.request(method, url, headers=headers, timeout=5,
                                proxies=http_proxy, verify=False, **kwargs).content
     except Exception as e:
-        print 'url request exception', e.message
+        print 'url request exception', str(e)
         ret = ''
     return ret
 

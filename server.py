@@ -9,11 +9,11 @@ import socket
 import select
 import urllib
 
-from bottle import request, run, route, error
+from bottle import request, run, route, error, abort
 from copy import copy
 
 from settings import route_to_transport, route_to_init, route_to_shutdown, md5digest
-from settings import encrypt, decrypt, cookie_param_name, js_template_file
+from settings import encrypt, decrypt, cookie_param_name, js_template_file, headers
 
 
 @error(404)
@@ -40,7 +40,9 @@ def invoke_service(data):
 
 @route('/%s' % route_to_transport)
 def transport():
-    raw = urllib.unquote(request.get_cookie(cookie_param_name))
+    verify_useragent()
+    raw = urllib.unquote(request.get_cookie(cookie_param_name, ''))
+    if not raw: return 'no client data found'
     data = decrypt(raw)
     ret = invoke_service(data)
     ciphertext = encrypt(ret)
@@ -55,22 +57,29 @@ def transport():
 @route('/%s' % route_to_init)
 def init():
     global sock
+    verify_useragent()
     shutdown()
     try:
         sock = socket.socket()
         sock.connect((service_host, service_port))
     except Exception as e:
-        return 'transport init failed: ', e
+        return 'transport init failed: ', str(e)
     return 'transport inited.'
 
 
 @route('/%s' % route_to_shutdown)
 def shutdown():
+    verify_useragent()
     try:
         sock.close()
     except:
         pass
     return 'transport stopped.'
+
+
+def verify_useragent():
+    if request.get_header('user-agent', '') != headers['User-Agent']:
+        abort(404)
 
 
 def get_template(filename):
